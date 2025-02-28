@@ -5,12 +5,30 @@ use burn::prelude::{Backend, Int, Tensor};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
+/// Warm up the backend by creating a tensor and converting it back to data.
+///
+/// This ensures that lazily initialized device resources are created before the trials.
+///
+/// # Arguments
+/// * `device` - The device to warm up.
+fn warm_backend<B: Backend>(device: &B::Device) {
+    let tensor = Tensor::<B, 1>::from_data([0.0; 10], device);
+    let _ = tensor.into_data();
+}
+
+/// A report of I/O bandwidth trials.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BackendIoReport {
+    /// Text description of the backend.
     pub backend: String,
+
+    /// Text description of the device.
     pub device: String,
 
+    /// Trials for sending data from the CPU to the backend.
     pub to_backend: BandwidthTrials,
+
+    /// Trials for sending data from the backend to the CPU.
     pub from_backend: BandwidthTrials,
 }
 
@@ -58,6 +76,19 @@ impl Display for BackendIoReport {
     }
 }
 
+/// Run trials for sending data from the CPU to the backend.
+///
+/// The total trials will be `reps + outliers` for each payload size;
+/// and `outliers` furthest from the mean will be dropped.
+///
+/// # Arguments
+/// * `device` - The device to use for the trials.
+/// * `sizes` - The sizes of the payloads to test.
+/// * `reps` - The number of repetitions for each size (excluding outliers).
+/// * `outliers` - The number of outliers to drop from the timing.
+///
+/// # Returns
+/// A `BandwidthTrials` object containing the trials.
 fn run_cpu_to_backend_io_trials<B: Backend>(
     device: &B::Device,
     sizes: &[usize],
@@ -69,6 +100,9 @@ fn run_cpu_to_backend_io_trials<B: Backend>(
     for &payload_size in sizes {
         let len = payload_size / 4;
         assert_ne!(len, 0);
+
+        // TODO: Consider testing the round-trip data for correctness.
+        // If we do this, might as well time in both directions.
 
         let data: Vec<i32> = rand_util::random_vec(len);
         let slice = &data[..];
@@ -85,6 +119,19 @@ fn run_cpu_to_backend_io_trials<B: Backend>(
     BandwidthTrials { trials }
 }
 
+/// Run trials for sending data from the backend to the CPU.
+///
+/// The total trials will be `reps + outliers` for each payload size;
+/// and `outliers` furthest from the mean will be dropped.
+///
+/// # Arguments
+/// * `device` - The device to use for the trials.
+/// * `sizes` - The sizes of the payloads to test.
+/// * `reps` - The number of repetitions for each size (excluding outliers).
+/// * `outliers` - The number of outliers to drop from the timing.
+///
+/// # Returns
+/// A `BandwidthTrials` object containing the trials.
 fn run_backend_to_cpu_io_trials<B: Backend>(
     device: &B::Device,
     sizes: &[usize],
@@ -96,6 +143,9 @@ fn run_backend_to_cpu_io_trials<B: Backend>(
     for &payload_size in sizes {
         let len = payload_size / 4;
         assert_ne!(len, 0);
+
+        // TODO: Consider testing the round-trip data for correctness.
+        // If we do this, might as well time in both directions.
 
         let data: Vec<i32> = rand_util::random_vec(len);
         let tensor = Tensor::<B, 1, Int>::from_data(&data[..], device);
@@ -112,12 +162,20 @@ fn run_backend_to_cpu_io_trials<B: Backend>(
     BandwidthTrials { trials }
 }
 
-fn warm_backend<B: Backend>(device: &B::Device) {
-    let tensor = Tensor::<B, 1>::from_data([0.0; 10], device);
-    let _ = tensor.into_data();
-}
-
 impl BackendIoReport {
+    /// Run the backend I/O trials.
+    ///
+    /// The total trials will be `reps + outliers` for each payload size;
+    /// and `outliers` furthest from the mean will be dropped.
+    ///
+    /// # Arguments
+    /// * `device` - The device to use for the trials.
+    /// * `sizes` - The sizes of the payloads to test.
+    /// * `reps` - The number of repetitions for each size (excluding outliers).
+    /// * `outliers` - The number of outliers to drop from the timing.
+    ///
+    /// # Returns
+    /// A `BackendIoReport` object containing the trials.
     pub fn run<B: Backend>(
         device: &B::Device,
         sizes: &[usize],

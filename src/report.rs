@@ -1,6 +1,6 @@
 use crate::bandwidth_stats::{BandwidthStats, BandwidthTrials};
 use crate::event_samples::EventSamples;
-use crate::rand_util;
+use crate::util;
 use burn::prelude::{Backend, Int, Tensor};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -104,7 +104,7 @@ fn run_cpu_to_backend_io_trials<B: Backend>(
         // TODO: Consider testing the round-trip data for correctness.
         // If we do this, might as well time in both directions.
 
-        let data: Vec<i32> = rand_util::random_vec(len);
+        let data: Vec<i32> = util::random_vec(len);
         let slice = &data[..];
 
         trials.push(BandwidthStats::from_samples(
@@ -147,7 +147,7 @@ fn run_backend_to_cpu_io_trials<B: Backend>(
         // TODO: Consider testing the round-trip data for correctness.
         // If we do this, might as well time in both directions.
 
-        let data: Vec<i32> = rand_util::random_vec(len);
+        let data: Vec<i32> = util::random_vec(len);
         let tensor = Tensor::<B, 1, Int>::from_data(&data[..], device);
 
         trials.push(BandwidthStats::from_samples(

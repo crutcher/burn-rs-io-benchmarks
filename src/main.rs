@@ -4,8 +4,8 @@ use std::error::Error;
 
 mod bandwidth_stats;
 mod event_samples;
-mod rand_util;
 mod report;
+mod util;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

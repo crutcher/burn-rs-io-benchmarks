@@ -1,3 +1,4 @@
+use crate::util;
 use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use std::time::Duration;
@@ -6,32 +7,6 @@ use std::time::Duration;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EventSamples {
     pub durations: Vec<Duration>,
-}
-
-/// Drop outliers (by distance from `.mean()`) from a list of durations.
-///
-/// # Arguments
-/// * `data` - List of durations.
-/// * `outliers` - Number of outliers to drop.
-///
-/// # Returns
-/// A list of durations with the outliers removed.
-fn drop_outliers(
-    data: &Vec<f64>,
-    outliers: usize,
-) -> Vec<f64> {
-    let mean = data.mean();
-
-    let mut idxs: Vec<usize> = (0..data.len()).collect();
-    idxs.sort_by(|a, b| {
-        let a = (data[*a] - mean).abs();
-        let b = (data[*b] - mean).abs();
-        a.partial_cmp(&b).unwrap()
-    });
-    idxs.truncate(idxs.len() - outliers);
-    idxs.sort();
-
-    idxs.iter().map(|&i| data[i]).collect()
 }
 
 impl EventSamples {
@@ -110,7 +85,7 @@ impl EventSamples {
         let times = &self.durations;
 
         let seconds: Vec<f64> = times.iter().map(|d| d.as_secs_f64()).collect();
-        let seconds = drop_outliers(&seconds, outliers);
+        let seconds = util::drop_outliers(&seconds, outliers);
 
         let samples = seconds.len();
 
@@ -144,16 +119,6 @@ pub struct TimingStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_drop_outliers() {
-        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let outliers = 2;
-
-        let result = drop_outliers(&data, outliers);
-
-        assert_eq!(result, vec![2.0, 3.0, 4.0]);
-    }
 
     #[test]
     fn test_sample_events() {
